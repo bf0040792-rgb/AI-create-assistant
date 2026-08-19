@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Create Assistant</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Onboarding Screen -->
+    <div id="onboarding" class="screen-overlay">
+        <div class="onboarding-content">
+            <div class="animated-bg"></div>
+            <div class="logo-large">AI</div>
+            <h1>AI Create Assistant</h1>
+            <p class="tagline">Your intelligent partner for building the future.</p>
+            
+            <div class="feature-cards">
+                <div class="feature-card">
+                    <h3>💬 AI Chat</h3>
+                    <p>Intelligent conversations and brainstorming.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>✨ Prompt Studio</h3>
+                    <p>Craft perfect master prompts effortlessly.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>💻 Code Generator</h3>
+                    <p>Instant code for your application ideas.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📚 Knowledge Hub</h3>
+                    <p>Store and manage context for your AI.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>⚙️ Control Panel</h3>
+                    <p>Fine-tune AI behavior and personality.</p>
+                </div>
+            </div>
+
+            <button id="btn-start" class="btn-primary btn-large">Start Creating</button>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="hidden">
+        
+        <!-- Navigation (Desktop Sidebar / Mobile Bottom) -->
+        <nav id="main-nav">
+            <div class="nav-brand desktop-only">
+                <div class="logo">AI</div>
+                <span>Create Assistant</span>
+            </div>
+            <ul class="nav-links">
+                <li data-target="dashboard" class="active"><span class="icon">🏠</span><span class="label">Home</span></li>
+                <li data-target="chat"><span class="icon">💬</span><span class="label">Chat</span></li>
+                <li data-target="prompt"><span class="icon">✨</span><span class="label">Prompt</span></li>
+                <li data-target="code"><span class="icon">💻</span><span class="label">Code</span></li>
+                <li data-target="knowledge"><span class="icon">📚</span><span class="label">Knowledge</span></li>
+                <li data-target="control"><span class="icon">⚙️</span><span class="label">Control</span></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            
+            <!-- Header -->
+            <header>
+                <div class="header-left">
+                    <div class="mobile-brand mobile-only">
+                        <div class="logo-small">AI</div>
+                    </div>
+                    <h2 id="current-section-title">Dashboard</h2>
+                </div>
+                <div class="header-right">
+                    <button id="btn-theme-toggle" class="icon-btn" title="Toggle Theme">🌓</button>
+                    <button id="btn-notifications" class="icon-btn" title="Notifications">🔔</button>
+                    <button id="btn-settings" class="icon-btn" title="Settings" data-target="settings">⚙️</button>
+                </div>
+            </header>
+
+            <!-- Sections -->
+            <div id="sections-container">
+                
+                <!-- Dashboard Section -->
+                <section id="dashboard" class="app-section active">
+                    <div class="dashboard-grid">
+                        <div class="dash-card nav-card" data-target="chat">
+                            <div class="card-icon">💬</div>
+                            <h3>New AI Chat</h3>
+                            <p>Start a new conversation.</p>
+                        </div>
+                        <div class="dash-card nav-card" data-target="prompt">
+                            <div class="card-icon">✨</div>
+                            <h3>Prompt Studio</h3>
+                            <p>Design optimal prompts.</p>
+                        </div>
+                        <div class="dash-card nav-card" data-target="code">
+                            <div class="card-icon">💻</div>
+                            <h3>Code Generator</h3>
+                            <p>Generate snippets & structures.</p>
+                        </div>
+                        <div class="dash-card nav-card" data-target="knowledge">
+                            <div class="card-icon">📚</div>
+                            <h3>Knowledge Hub</h3>
+                            <p>Manage project context.</p>
+                        </div>
+                        <div class="dash-card nav-card" data-target="control">
+                            <div class="card-icon">⚙️</div>
+                            <h3>AI Control Panel</h3>
+                            <p>Adjust parameters & identity.</p>
+                        </div>
+                    </div>
+
+                    <div class="recent-activity-container mt-4">
+                        <h3>Recent Activity</h3>
+                        <ul id="recent-activity-list" class="activity-list">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- AI Chat Section -->
+                <section id="chat" class="app-section">
+                    <div class="chat-container">
+                        <div class="chat-sidebar" id="chat-sidebar">
+                            <button id="btn-new-chat" class="btn-secondary w-100 mb-2">➕ New Chat</button>
+                            <input type="text" id="chat-search" class="input-field mb-2" placeholder="Search history...">
+                            <ul id="chat-history-list" class="chat-history-list">
+                                <!-- Populated by JS -->
+                            </ul>
+                        </div>
+                        
+                        <div class="chat-main">
+                            <div class="chat-header">
+                                <h3 id="current-chat-title">New Chat</h3>
+                                <div class="chat-actions">
+                                    <button id="btn-rename-chat" class="icon-btn" title="Rename">✏️</button>
+                                    <button id="btn-clear-chat" class="icon-btn" title="Clear Messages">🧹</button>
+                                    <button id="btn-delete-chat" class="icon-btn danger-text" title="Delete Chat">🗑️</button>
+                                </div>
+                            </div>
+                            
+                            <div id="chat-messages" class="chat-messages">
+                                <!-- Empty State Suggestions -->
+                                <div class="chat-empty-state">
+                                    <div class="logo-medium mb-2">AI</div>
+                                    <h3>How can I help you create today?</h3>
+                                    <div class="suggested-prompts">
+                                        <button class="btn-outline prompt-suggestion">Plan a modern web app</button>
+                                        <button class="btn-outline prompt-suggestion">Write a Python script for automation</button>
+                                        <button class="btn-outline prompt-suggestion">Help me design a database</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="chat-input-area">
+                                <div id="typing-indicator" class="hidden">AI is typing...</div>
+                                <div class="input-wrapper">
+                                    <textarea id="chat-input" placeholder="Type your message... (Shift+Enter for new line)" rows="1"></textarea>
+                                    <div class="input-controls">
+                                        <button id="btn-stop-gen" class="icon-btn hidden" title="Stop Generation">⏹️</button>
+                                        <button id="btn-send-chat" class="btn-primary icon-btn" title="Send">➤</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Prompt Studio Section -->
+                <section id="prompt" class="app-section">
+                    <div class="split-layout">
+                        <div class="form-panel glass-panel">
+                            <h3>Create a Prompt</h3>
+                            <div class="form-group">
+                                <label>What do you want to create?</label>
+                                <textarea id="prompt-idea" class="input-field" rows="3" placeholder="Describe your idea..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Category</label>
+                                <select id="prompt-category" class="input-field">
+                                    <option>Web Application</option>
+                                    <option>Mobile Application</option>
+                                    <option>Game</option>
+                                    <option>Website</option>
+                                    <option>AI Tool</option>
+                                    <option>Automation</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Target AI</label>
+                                <select id="prompt-target" class="input-field">
+                                    <option>General AI</option>
+                                    <option>Coding Assistant</option>
+                                    <option>Copywriter</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Output Type</label>
+                                <select id="prompt-type" class="input-field">
+                                    <option>Detailed Prompt</option>
+                                    <option>Master Prompt</option>
+                                    <option>Feature Plan</option>
+                                    <option>Technical Specification</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Detail Level</label>
+                                <select id="prompt-detail" class="input-field">
+                                    <option>Basic</option>
+                                    <option selected>Detailed</option>
+                                    <option>Advanced</option>
+                                </select>
+                            </div>
+                            <button id="btn-generate-prompt" class="btn-primary w-100">✨ Generate Prompt</button>
+                        </div>
+                        
+                        <div class="result-panel glass-panel">
+                            <div class="panel-header">
+                                <h3>Generated Prompt</h3>
+                                <div class="actions">
+                                    <button id="btn-copy-prompt" class="icon-btn" title="Copy">📋</button>
+                                    <button id="btn-save-prompt" class="icon-btn" title="Save">💾</button>
+                                </div>
+                            </div>
+                            <textarea id="prompt-output" class="output-area" readonly placeholder="Your generated prompt will appear here..."></textarea>
+                            
+                            <div class="saved-prompts-section mt-4">
+                                <h4>Saved Prompts</h4>
+                                <ul id="saved-prompts-list" class="item-list">
+                                    <!-- Populated by JS -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Code Generator Section -->
+                <section id="code" class="app-section">
+                    <div class="split-layout">
+                        <div class="form-panel glass-panel">
+                            <h3>Code Generator</h3>
+                            <div class="form-group">
+                                <label>Project Type</label>
+                                <input type="text" id="code-project-type" class="input-field" placeholder="e.g., Landing Page, API Endpoint">
+                            </div>
+                            <div class="form-group">
+                                <label>Programming Language</label>
+                                <select id="code-language" class="input-field">
+                                    <option>HTML/CSS/JavaScript</option>
+                                    <option>Python</option>
+                                    <option>PHP</option>
+                                    <option>JavaScript</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>UI Style</label>
+                                <select id="code-style" class="input-field">
+                                    <option>Modern</option>
+                                    <option>Minimal</option>
+                                    <option>Glassmorphism</option>
+                                    <option>Futuristic</option>
+                                    <option>Dark Professional</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Device Target</label>
+                                <select id="code-device" class="input-field">
+                                    <option>Responsive</option>
+                                    <option>Desktop</option>
+                                    <option>Mobile</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Specific Request</label>
+                                <textarea id="code-request" class="input-field" rows="3" placeholder="Describe the component or logic..."></textarea>
+                            </div>
+                            <button id="btn-generate-code" class="btn-primary w-100">💻 Generate Code</button>
+                        </div>
+                        
+                        <div class="result-panel glass-panel code-panel-wrapper">
+                            <div class="panel-header">
+                                <h3>Generated Code</h3>
+                                <div class="actions">
+                                    <button id="btn-copy-code" class="icon-btn" title="Copy">📋</button>
+                                    <button id="btn-download-code" class="icon-btn" title="Download as .txt">⬇️</button>
+                                    <button id="btn-fullscreen-code" class="icon-btn" title="Toggle Fullscreen">⛶</button>
+                                    <button id="btn-clear-code" class="icon-btn" title="Clear">🧹</button>
+                                </div>
+                            </div>
+                            <div class="code-output-container">
+                                <pre><code id="code-output" class="code-output">/* Generated code will appear here... */</code></pre>
+                            </div>
+                            
+                            <div class="code-history-section mt-4">
+                                <h4>History</h4>
+                                <ul id="code-history-list" class="item-list horizontal-list">
+                                    <!-- Populated by JS -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Knowledge Hub Section -->
+                <section id="knowledge" class="app-section">
+                    <div class="knowledge-container glass-panel">
+                        <div class="knowledge-header">
+                            <div>
+                                <h3>Project Knowledge</h3>
+                                <p>Upload files to provide context to the AI.</p>
+                            </div>
+                            <div class="form-group mb-0" style="width:200px;">
+                                <select id="knowledge-category" class="input-field">
+                                    <option>General</option>
+                                    <option>Documentation</option>
+                                    <option>Design Assets</option>
+                                    <option>Code Snippets</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="drop-zone" class="drop-zone">
+                            <div class="drop-icon">📁</div>
+                            <h4>Drag & Drop files here</h4>
+                            <p>or</p>
+                            <input type="file" id="file-input" multiple class="hidden">
+                            <button id="btn-browse-files" class="btn-outline">Browse Files</button>
+                            <p class="file-limits mt-2">Supported: .txt, .md, .json, .csv (Browser session only for Phase 1)</p>
+                        </div>
+
+                        <div class="knowledge-list-container mt-4">
+                            <div class="flex-between mb-2">
+                                <h4>Uploaded Files</h4>
+                                <input type="text" id="knowledge-search" class="input-field-small" placeholder="Search files...">
+                            </div>
+                            <ul id="knowledge-list" class="item-list">
+                                <!-- Populated by JS -->
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- AI Control Panel Section -->
+                <section id="control" class="app-section">
+                    <div class="control-panel-grid">
+                        <div class="glass-panel">
+                            <h3>AI Identity</h3>
+                            <div class="form-group">
+                                <label>AI Name</label>
+                                <input type="text" id="ctrl-ai-name" class="input-field" value="Create Assistant">
+                            </div>
+                            <div class="form-group">
+                                <label>AI Role</label>
+                                <input type="text" id="ctrl-ai-role" class="input-field" value="Senior Developer & Architect">
+                            </div>
+                            <div class="form-group">
+                                <label>AI Personality</label>
+                                <input type="text" id="ctrl-ai-personality" class="input-field" value="Professional, helpful, and concise">
+                            </div>
+                            <div class="form-group">
+                                <label>Main Purpose</label>
+                                <input type="text" id="ctrl-ai-purpose" class="input-field" value="To assist in building software and digital products.">
+                            </div>
+                        </div>
+
+                        <div class="glass-panel">
+                            <h3>Model Behavior</h3>
+                            <div class="form-group">
+                                <label class="flex-between">Temperature (Creativity) <span id="val-temp">0.7</span></label>
+                                <input type="range" id="ctrl-temp" min="0" max="1" step="0.1" value="0.7" class="slider">
+                            </div>
+                            <div class="form-group">
+                                <label class="flex-between">Precision <span id="val-prec">0.8</span></label>
+                                <input type="range" id="ctrl-prec" min="0" max="1" step="0.1" value="0.8" class="slider">
+                            </div>
+                            <div class="form-group">
+                                <label>Response Length</label>
+                                <select id="ctrl-length" class="input-field">
+                                    <option>Short</option>
+                                    <option selected>Balanced</option>
+                                    <option>Comprehensive</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Context Mode</label>
+                                <select id="ctrl-context" class="input-field">
+                                    <option selected>Full History</option>
+                                    <option>Recent Only</option>
+                                    <option>Isolated</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel full-width">
+                            <div class="flex-between">
+                                <h3>System Instructions</h3>
+                                <div class="actions">
+                                    <button id="btn-sys-reset" class="btn-outline-small">Reset</button>
+                                </div>
+                            </div>
+                            <p class="text-small mb-2">These instructions guide the overall behavior of the AI.</p>
+                            <textarea id="ctrl-system-inst" class="input-field" rows="6">You are a Senior Frontend Engineer and AI Product Architect. You provide robust, clean, and modern solutions.</textarea>
+                            <button id="btn-sys-save" class="btn-primary mt-2">Save Instructions</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Settings Section -->
+                <section id="settings" class="app-section">
+                    <div class="settings-container glass-panel max-w-md mx-auto">
+                        <h3>Settings & Preferences</h3>
+                        
+                        <div class="settings-group">
+                            <h4>Appearance</h4>
+                            <div class="form-group">
+                                <label>Theme</label>
+                                <select id="set-theme" class="input-field">
+                                    <option value="dark">Dark</option>
+                                    <option value="light">Light</option>
+                                    <option value="system">System</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-group">
+                            <h4>User Preferences</h4>
+                            <div class="form-group">
+                                <label>Preferred Language</label>
+                                <select id="set-lang" class="input-field">
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Preferred Coding Language</label>
+                                <input type="text" id="set-code-lang" class="input-field" value="JavaScript">
+                            </div>
+                        </div>
+
+                        <div class="settings-group">
+                            <h4>Data Management</h4>
+                            <div class="flex-column gap-2">
+                                <button id="btn-export-data" class="btn-outline w-100">📥 Export App Data (JSON)</button>
+                                
+                                <label class="btn-outline w-100 text-center cursor-pointer">
+                                    📤 Import App Data
+                                    <input type="file" id="file-import-data" accept=".json" class="hidden">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-group danger-zone mt-4">
+                            <h4 class="danger-text">Danger Zone</h4>
+                            <div class="flex-column gap-2">
+                                <button id="btn-clear-chats-data" class="btn-danger w-100">Clear All Chats</button>
+                                <button id="btn-clear-prompts-data" class="btn-danger w-100">Clear Saved Prompts</button>
+                                <button id="btn-reset-app" class="btn-danger w-100">Factory Reset App</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals & Toasts -->
+    <div id="confirmation-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-panel">
+            <h3 id="modal-title">Confirm Action</h3>
+            <p id="modal-message">Are you sure you want to proceed?</p>
+            <div class="modal-actions">
+                <button id="modal-btn-cancel" class="btn-outline">Cancel</button>
+                <button id="modal-btn-confirm" class="btn-danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
