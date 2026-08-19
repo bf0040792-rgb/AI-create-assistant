@@ -28,6 +28,7 @@ class ChatResponse(ChatBase):
 class ChatCreateRequest(BaseModel):
     message: str
     chat_id: Optional[int] = None
+    stream: Optional[bool] = False
 
 class AppSettingsSchema(BaseModel):
     theme: str
@@ -39,6 +40,7 @@ class AppSettingsSchema(BaseModel):
     temperature: float
     creativity: float
     precision: float
+    top_p: Optional[float] = 0.9 # Added for Phase 3
     response_length: str
     context_mode: str
     preferred_language: str

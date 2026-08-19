@@ -1,10 +1,11 @@
 import os
 import uuid
+import json
 from typing import List
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -13,14 +14,14 @@ import schemas
 import services
 from database import engine, get_db, Base
 from ai_engine import ai_engine
+from model_manager import model_manager
 from config import settings
 
 # Create DB Tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="AI Create Assistant API", version="1.0")
+app = FastAPI(title="AI Create Assistant API (Self-Hosted)", version="1.1")
 
-# CORS for development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,15 +31,28 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------
-# Health Check
+# Health Check & Model Status
 # ---------------------------------------------------------
 @app.get("/api/health")
 def health_check():
-    return {
-        "status": "online",
-        "service": "AI Create Assistant Backend",
-        "version": "1.0"
-    }
+    return {"status": "online", "service": "AI Create Assistant Backend"}
+
+@app.get("/api/model/status")
+def get_model_status():
+    return model_manager.get_status()
+
+@app.post("/api/model/load")
+def load_model():
+    try:
+        model_manager.load_model()
+        return model_manager.get_status()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/model/unload")
+def unload_model():
+    model_manager.unload_model()
+    return model_manager.get_status()
 
 # ---------------------------------------------------------
 # Chat Endpoints
@@ -50,8 +64,7 @@ def get_chats(db: Session = Depends(get_db)):
 @app.get("/api/chats/{chat_id}", response_model=schemas.ChatResponse)
 def get_chat(chat_id: int, db: Session = Depends(get_db)):
     chat = services.get_chat(db, chat_id)
-    if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
+    if not chat: raise HTTPException(status_code=404, detail="Chat not found")
     return chat
 
 @app.post("/api/chats", response_model=schemas.ChatResponse)
@@ -68,26 +81,26 @@ def clear_messages(chat_id: int, db: Session = Depends(get_db)):
     services.clear_messages(db, chat_id)
     return {"success": True}
 
-@app.post("/api/chat")
-async def chat_interaction(req: schemas.ChatCreateRequest, db: Session = Depends(get_db)):
-    if not req.message:
-        raise HTTPException(status_code=400, detail="Message is empty")
-    
+def _prepare_ai_request(req: schemas.ChatCreateRequest, db: Session):
     chat_id = req.chat_id
     if not chat_id:
         chat = services.create_chat(db, "New Chat")
         chat_id = chat.id
     
-    # Save user msg
     user_msg = services.add_message(db, chat_id, "user", req.message)
-    
-    # Load state
     app_settings = services.get_settings(db)
     
-    # Build AI request obj
+    # Fetch history
+    chat = services.get_chat(db, chat_id)
+    history_dicts = [{"role": m.role, "content": m.content} for m in chat.messages if m.id != user_msg.id]
+    
+    # Adding top_p support via dynamic getattr (defaults to 0.9 if db missing column)
+    top_p_val = getattr(app_settings, "top_p", 0.9)
+
     ai_request = {
         "message": req.message,
         "chat_id": chat_id,
+        "chat_history": history_dicts,
         "system_instructions": app_settings.system_instructions,
         "preferences": {
             "preferred_language": app_settings.preferred_language,
@@ -96,21 +109,49 @@ async def chat_interaction(req: schemas.ChatCreateRequest, db: Session = Depends
         "model_settings": {
             "ai_name": app_settings.ai_name,
             "ai_role": app_settings.ai_role,
-            "temperature": app_settings.temperature
+            "ai_personality": app_settings.ai_personality,
+            "temperature": app_settings.temperature,
+            "top_p": top_p_val
         }
     }
+    return chat_id, user_msg, ai_request
+
+@app.post("/api/chat")
+async def chat_interaction(req: schemas.ChatCreateRequest, db: Session = Depends(get_db)):
+    if not req.message: raise HTTPException(status_code=400, detail="Message is empty")
     
-    # Generate AI Response (Mock for Phase 2)
-    ai_text = await ai_engine.generate_response(ai_request)
+    chat_id, user_msg, ai_request = _prepare_ai_request(req, db)
     
-    # Save AI msg
-    ai_msg = services.add_message(db, chat_id, "assistant", ai_text)
+    try:
+        ai_text = await ai_engine.generate_response(ai_request)
+        ai_msg = services.add_message(db, chat_id, "assistant", ai_text)
+        return {"chat_id": chat_id, "user_message": user_msg, "assistant_message": ai_msg}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/chat/stream")
+async def chat_interaction_stream(req: schemas.ChatCreateRequest, db: Session = Depends(get_db)):
+    if not req.message: raise HTTPException(status_code=400, detail="Message is empty")
     
-    return {
-        "chat_id": chat_id,
-        "user_message": user_msg,
-        "assistant_message": ai_msg
-    }
+    chat_id, user_msg, ai_request = _prepare_ai_request(req, db)
+    
+    return StreamingResponse(
+        ai_engine.generate_response_stream(ai_request),
+        media_type="text/event-stream",
+        headers={
+            "X-Chat-ID": str(chat_id),
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
+# ---------------------------------------------------------
+# Save AI Message Endpoint (Called after stream finishes)
+# ---------------------------------------------------------
+@app.post("/api/chat/{chat_id}/save_assistant_message")
+def save_ai_message(chat_id: int, content: str = Form(...), db: Session = Depends(get_db)):
+    ai_msg = services.add_message(db, chat_id, "assistant", content)
+    return {"success": True, "message_id": ai_msg.id}
 
 # ---------------------------------------------------------
 # Settings API
@@ -132,8 +173,11 @@ def reset_settings(db: Session = Depends(get_db)):
 # ---------------------------------------------------------
 @app.post("/api/prompts/generate")
 async def generate_prompt(req: schemas.PromptGenerateRequest):
-    content = await ai_engine.generate_prompt(req.dict())
-    return {"content": content}
+    try:
+        content = await ai_engine.generate_prompt(req.dict())
+        return {"content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/prompts", response_model=List[schemas.PromptResponse])
 def get_prompts(db: Session = Depends(get_db)):
@@ -153,12 +197,15 @@ def delete_prompt(prompt_id: int, db: Session = Depends(get_db)):
 # ---------------------------------------------------------
 @app.post("/api/code/generate", response_model=schemas.CodeResponse)
 async def generate_code(req: schemas.CodeGenerateRequest, db: Session = Depends(get_db)):
-    content = await ai_engine.generate_code(req.dict())
-    response_data = schemas.CodeResponse(
-        id=0, language=req.language, project_type=req.project_type, 
-        request=req.request, generated_code=content, created_at=datetime.utcnow()
-    )
-    return services.add_code_history(db, response_data)
+    try:
+        content = await ai_engine.generate_code(req.dict())
+        response_data = schemas.CodeResponse(
+            id=0, language=req.language, project_type=req.project_type, 
+            request=req.request, generated_code=content, created_at=datetime.utcnow()
+        )
+        return services.add_code_history(db, response_data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/code/history")
 def get_code_history(db: Session = Depends(get_db)):
@@ -174,18 +221,13 @@ def delete_code_history(history_id: int, db: Session = Depends(get_db)):
 # ---------------------------------------------------------
 @app.post("/api/knowledge/upload")
 async def upload_knowledge(file: UploadFile = File(...), category: str = Form("General"), db: Session = Depends(get_db)):
-    if file.size > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large")
-    
+    if file.size > 10 * 1024 * 1024: raise HTTPException(status_code=400, detail="File too large")
     ext = file.filename.split('.')[-1] if '.' in file.filename else ''
     stored_filename = f"{uuid.uuid4().hex}.{ext}"
     os.makedirs("uploads", exist_ok=True)
     file_path = os.path.join("uploads", stored_filename)
-    
     content = await file.read()
-    with open(file_path, "wb") as f:
-        f.write(content)
-        
+    with open(file_path, "wb") as f: f.write(content)
     kfile = services.add_knowledge_file(db, file.filename, stored_filename, category, file.content_type, len(content))
     return kfile
 
@@ -197,10 +239,8 @@ def get_knowledge(db: Session = Depends(get_db)):
 def delete_knowledge(file_id: int, db: Session = Depends(get_db)):
     kfile = services.delete_knowledge_file(db, file_id)
     if kfile:
-        try:
-            os.remove(os.path.join("uploads", kfile.stored_filename))
-        except:
-            pass
+        try: os.remove(os.path.join("uploads", kfile.stored_filename))
+        except: pass
     return {"success": True}
 
 # ---------------------------------------------------------
@@ -221,22 +261,17 @@ def export_data(db: Session = Depends(get_db)):
 
 @app.post("/api/import")
 def import_data(data: schemas.ImportData, db: Session = Depends(get_db)):
-    # Very basic import logic for phase 2
-    if data.settings:
-        services.update_settings(db, data.settings)
+    if data.settings: services.update_settings(db, data.settings)
     if data.saved_prompts:
-        for p in data.saved_prompts:
-            db.add(models.SavedPrompt(**p))
+        for p in data.saved_prompts: db.add(models.SavedPrompt(**p))
     if data.code_history:
-        for h in data.code_history:
-            db.add(models.CodeHistory(**h))
+        for h in data.code_history: db.add(models.CodeHistory(**h))
     if data.chats:
         for c in data.chats:
             chat = models.Chat(title=c.get("title", "Imported Chat"))
             db.add(chat)
             db.commit()
-            for m in c.get("messages", []):
-                db.add(models.Message(chat_id=chat.id, role=m.get("role"), content=m.get("content")))
+            for m in c.get("messages", []): db.add(models.Message(chat_id=chat.id, role=m.get("role"), content=m.get("content")))
     db.commit()
     return {"success": True}
 
@@ -244,13 +279,11 @@ def import_data(data: schemas.ImportData, db: Session = Depends(get_db)):
 # Static File Serving (Frontend)
 # ---------------------------------------------------------
 @app.get("/")
-def read_index():
-    return FileResponse("index.html")
+def read_index(): return FileResponse("index.html")
 
 @app.get("/{filename}")
 def read_file(filename: str):
-    if filename in ["index.html", "style.css", "script.js"]:
-        return FileResponse(filename)
+    if filename in ["index.html", "style.css", "script.js"]: return FileResponse(filename)
     raise HTTPException(status_code=404)
 
 if __name__ == "__main__":

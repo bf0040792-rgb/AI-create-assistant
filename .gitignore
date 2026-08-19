@@ -6,3 +6,5 @@ data/*.db
 !data/.gitkeep
 uploads/*
 !uploads/.gitkeep
+models/*.gguf
+!models/.gitkeep

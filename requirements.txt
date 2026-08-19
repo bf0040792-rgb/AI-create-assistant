@@ -1,6 +1,8 @@
- fastapi
+fastapi
 uvicorn
 sqlalchemy
 pydantic
 pydantic-settings
 python-multipart
+llama-cpp-python
+sse-starlette

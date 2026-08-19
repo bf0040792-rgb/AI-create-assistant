@@ -348,6 +348,29 @@
                 <!-- AI Control Panel Section -->
                 <section id="control" class="app-section">
                     <div class="control-panel-grid">
+                        
+                        <div class="glass-panel full-width">
+                            <div class="flex-between">
+                                <h3>Self-Hosted Model Engine</h3>
+                                <div class="actions">
+                                    <button id="btn-model-refresh" class="icon-btn" title="Refresh Status">🔄</button>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap: 1rem; align-items: center; margin: 1rem 0;">
+                                <div id="model-status-indicator" style="width:12px; height:12px; border-radius:50%; background:gray;"></div>
+                                <strong>Status:</strong> <span id="model-status-text">Checking...</span>
+                                <span style="margin-left:auto;">
+                                    <button id="btn-model-load" class="btn-primary">Load Model</button>
+                                    <button id="btn-model-unload" class="btn-danger hidden">Unload Model</button>
+                                </span>
+                            </div>
+                            <div class="text-small" style="color:var(--text-secondary); display:flex; gap: 1.5rem;">
+                                <span><strong>File:</strong> <span id="model-path-text">models/model.gguf</span></span>
+                                <span><strong>Context:</strong> <span id="model-ctx-text">4096</span></span>
+                                <span><strong>Max Tokens:</strong> <span id="model-max-text">1024</span></span>
+                            </div>
+                        </div>
+
                         <div class="glass-panel">
                             <h3>AI Identity</h3>
                             <div class="form-group">
